@@ -1,0 +1,110 @@
+1.把附件图像的直方图画出。
+
+[X,map]=imread('woman1.bmp');
+I=ind2gray(X,map);
+hist_im=imhist(I); %计算直方图
+bar(hist_im),title("woman1的灰度直方图");%画直方图
+
+2.把所有图像进行直方图均衡；输出均衡后的图像和源图像进行比对；分析改善内容。
+
+[X,map]=imread('lena4.bmp');
+I=ind2gray(X,map);
+subplot(1,2,1),imshow(I),title("lena4原图像");
+J=histeq(I,64);
+subplot(1,2,2),imshow(J),title("lena4均衡后的图像");
+
+3.进一步把图像按照对源图像直方图的观察，各自自行指定不同源图像的直方图，进行直方图匹配，进行图像增强。
+
+[X,map]=imread('woman.bmp');
+I=ind2gray(X,map);
+standard_hist=imhist(I); %计算标准图像直方图
+[Y,map2]=imread('woman2.bmp');
+J=ind2gray(Y,map2);
+orgin_hist=imhist(J); %计算原始图像直方图
+% 求累计频率
+startdard_value = cumsum(standard_hist)';
+orgin_value = cumsum(orgin_hist)';
+for i=1:256
+    value{i}=startdard_value-orgin_value(i);
+    value{i}=abs(value{i});
+    [temp, index(i)]=min(value{i});
+end
+pipei=zeros(2560,2048);
+for i=1:2560
+    for j=1:2048
+        pipei(i,j)=index(J(i,j)+1)-1;
+    end
+end
+pipei=uint8(pipei);
+% 显示图像
+subplot(1,3,1);imshow(J);title('原图');
+subplot(1,3,2);imshow(X);title('标准图');
+subplot(1,3,3);imshow(pipei);title('woman2匹配到标准图');
+
+4.对elain和lena图像进行7*7的局部直方图增强。
+
+[X,map]=imread('lena.bmp');
+I=ind2gray(X,map);
+subplot(1,2,1),imshow(I),title("lena原图像");
+%建立7*7模板
+n=7;
+a(1:n,1:n)=1;
+image=wextend('2D','sym',I,n);%扩展
+[M,N]=size(image);%扩展后的图像大小
+W=double(image);
+jubu=W;
+for i=n+1:M-n 
+   for j=n+1:N-n
+         m=W(i:i+(n-1),j:j+(n-1)).*a(1:n,1:n); %对原图像每个点都与模板中心点对齐
+         junheng=histeq(uint8(m));%对局部进行直方图均衡
+         junheng=double(junheng);
+         jubu(i,j)=junheng(1,1); %将均衡后中心点的像素值赋给原图对应点的元素，未被赋值的元素取原值
+    end
+end
+Picture=jubu(n+1:M-n,n+1:N-n);%恢复原图像大小
+Picture=uint8(Picture);
+subplot(1,2,2),imshow(Picture),title("lena局部增强后的图像"); %显示均衡后的图象
+
+5.利用直方图对图像elain和woman进行分割。
+
+[X,map]=imread('elain.bmp');
+I=ind2gray(X,map);
+subplot(1,2,1),imshow(I),title("elain原图像");
+I_double=double(I);
+[wid,len]=size(I);%图像的大小
+%直方图
+hist=imhist(I);
+%直方图归一化
+hist=hist/(wid*len);
+ave=0;
+for m=1:256
+    ave=ave+(m-1)*hist(m);  %灰度的均值
+end
+xigmaB2=0;%
+for mindex=1:256%对每个灰度
+    threshold=mindex-1;%设定阈值
+    mubiao=0;%目标概率
+    beijing=0;%背景概率
+    for m=1:threshold-1
+        mubiao=mubiao+hist(m);%目标概率
+    end
+    beijing=1-mubiao; %背景的概率
+    mu_ave=0;%目标的平均灰度值
+    bei_ave=0;%背景的平均灰度值
+    for m=1:256
+        if m<threshold
+            mu_ave=mu_ave+(m-1)*hist(m);
+        else
+            bei_ave=bei_ave+(m-1)*hist(m);
+        end
+    end
+    mu_ave=mu_ave/mubiao;%目标的平均灰度值
+    bei_ave=bei_ave/beijing;%背景的平均灰度值
+    fangcha_max=mubiao*(mu_ave-ave)^2+beijing*(bei_ave-ave)^2;%最大方差
+    xigma(mindex)=fangcha_max;%函数xigma
+    %找到xigmaB2的值最大
+    if fangcha_max>xigmaB2
+        yuzhi=threshold;
+        xigmaB2=fangcha_max;%找到最大的方差及其对应灰度yuzhi
+    end
+end
